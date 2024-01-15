@@ -101,8 +101,11 @@ namespace LLMUnity
         new public void Awake()
         {
             // start the llm server and run the OnEnable of the client
-            StartLLMServer();
-            base.Awake();
+            if (!serverListening)
+            {
+                StartLLMServer();
+                base.Awake();
+            }
         }
 
         private string SelectApeBinary()

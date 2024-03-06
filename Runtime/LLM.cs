@@ -28,7 +28,6 @@ namespace LLMUnity
         [ModelAddonAdvanced] public string lora = "";
         [ModelAdvanced] public int contextSize = 512;
         [ModelAdvanced] public int batchSize = 512;
-        [ModelAdvanced] public bool asynchronousStartup = false;
 
         [HideInInspector] public readonly (string, string)[] modelOptions = new(string, string)[]
         {

@@ -264,7 +264,7 @@ namespace LLMUnity
             process = LLMUnitySetup.CreateProcess(binary, arguments, CheckIfListening, ProcessError, ProcessExited, environment);
         }
 
-        private async Task StartLLMServer()
+        public async Task StartLLMServer()
         {
             if (IsPortInUse()) throw new Exception($"Port {port} is already in use, please use another port or kill all llamafile processes using it!");
 

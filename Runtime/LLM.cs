@@ -28,6 +28,7 @@ namespace LLMUnity
         [ModelAddonAdvanced] public string lora = "";
         [ModelAdvanced] public int contextSize = 512;
         [ModelAdvanced] public int batchSize = 512;
+        [ModelAdvanced] public bool asynchronousStartup = false;
 
         [HideInInspector] public readonly (string, string)[] modelOptions = new(string, string)[]
         {
@@ -148,25 +149,8 @@ namespace LLMUnity
 
 #endif
 
-        public List<LLMClient> GetListeningClients()
-        {
-            List<LLMClient> clients = new List<LLMClient>();
-            foreach (LLMClient client in FindObjectsOfType<LLMClient>())
-            {
-                if (client.GetType() == typeof(LLM)) continue;
-                if (client.host == host && client.port == port)
-                {
-                    clients.Add(client);
-                }
-            }
-            return clients;
-        }
-
         new public async void Awake()
         {
-            // start the llm server and run the Awake of the client
-            await StartLLMServer();
-
             base.Awake();
         }
 
@@ -199,7 +183,7 @@ namespace LLMUnity
                 }
                 return true;
             }
-            catch {}
+            catch { }
             return false;
         }
 
@@ -236,7 +220,7 @@ namespace LLMUnity
                     serverBlock.Set();
                 }
             }
-            catch {}
+            catch { }
         }
 
         private void ProcessExited(object sender, EventArgs e)
@@ -304,21 +288,28 @@ namespace LLMUnity
 
             string GPUArgument = numGPULayers <= 0 ? "" : $" -ngl {numGPULayers}";
             LLMUnitySetup.makeExecutable(server);
-            await RunAndWait(server, arguments + GPUArgument);
+            RunServerCommand(server, arguments + GPUArgument);
+
+            if (asynchronousStartup) await WaitOneASync(serverBlock, TimeSpan.FromSeconds(60));
+            else serverBlock.WaitOne(60000);
 
             if (process.HasExited && mmapCrash)
             {
                 Debug.Log("Mmap error, fallback to no mmap use");
                 serverBlock.Reset();
                 arguments += " --no-mmap";
-                await RunAndWait(server, arguments + GPUArgument);
+                RunServerCommand(server, arguments + GPUArgument);
+                if (asynchronousStartup) await WaitOneASync(serverBlock, TimeSpan.FromSeconds(60));
+                else serverBlock.WaitOne(60000);
             }
 
             if (process.HasExited && numGPULayers > 0)
             {
                 Debug.Log("GPU failed, fallback to CPU");
                 serverBlock.Reset();
-                await RunAndWait(server, arguments);
+                RunServerCommand(server, arguments);
+                if (asynchronousStartup) await WaitOneASync(serverBlock, TimeSpan.FromSeconds(60));
+                else serverBlock.WaitOne(60000);
             }
 
             if (process.HasExited) throw new Exception("Server could not be started!");
@@ -337,13 +328,6 @@ namespace LLMUnity
         public void OnDestroy()
         {
             StopProcess();
-        }
-
-        private async Task RunAndWait(string exe, string args, int seconds = 60)
-        {
-            RunServerCommand(exe, args);
-            if (asynchronousStartup) await WaitOneASync(serverBlock, TimeSpan.FromSeconds(seconds));
-            else serverBlock.WaitOne(seconds * 1000);
         }
 
         /// Wrapper from https://stackoverflow.com/a/18766131

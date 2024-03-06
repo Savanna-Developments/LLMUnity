@@ -130,11 +130,6 @@ namespace LLMUnity
         public override void SetTemplate(string templateName)
         {
             base.SetTemplate(templateName);
-            foreach (LLMClient client in GetListeningClients())
-            {
-                client.chatTemplate = chatTemplate;
-                client.template = template;
-            }
         }
 
         public async Task SetLora(string path)
@@ -279,7 +274,7 @@ namespace LLMUnity
                 if (!File.Exists(loraPath)) throw new Exception($"File {loraPath} not found!");
             }
 
-            int slots = parallelPrompts == -1 ? GetListeningClients().Count + 1 : parallelPrompts;
+            int slots = parallelPrompts == -1 ? 1 : parallelPrompts;
             string arguments = $" --port {port} -m {EscapeSpaces(modelPath)} -c {contextSize} -b {batchSize} --log-disable --nobrowser -np {slots}";
             if (remote) arguments += $" --host 0.0.0.0";
             if (numThreads > 0) arguments += $" -t {numThreads}";

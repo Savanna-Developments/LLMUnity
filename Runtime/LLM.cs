@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEditor;
@@ -23,6 +22,7 @@ namespace LLMUnity
         [ServerAdvanced] public bool debug = false;
         [ServerAdvanced] public bool asynchronousStartup = false;
         [ServerAdvanced] public bool remote = false;
+        [ServerAdvanced] public bool killExistingServersOnStart = true;
 
         [Model] public string model = "";
         [ModelAddonAdvanced] public string lora = "";
@@ -52,6 +52,8 @@ namespace LLMUnity
         private bool mmapCrash = false;
         public bool serverListening { get; private set; } = false;
         private ManualResetEvent serverBlock = new ManualResetEvent(false);
+        static object crashKillLock = new object();
+        static bool crashKill = false;
 
 #if UNITY_EDITOR
         [InitializeOnLoadMethod]
@@ -143,8 +145,33 @@ namespace LLMUnity
 
 #endif
 
+        public List<LLMClient> GetListeningClients()
+        {
+            List<LLMClient> clients = new List<LLMClient>();
+            foreach (LLMClient client in FindObjectsOfType<LLMClient>())
+            {
+                if (client.GetType() == typeof(LLM)) continue;
+                if (client.host == host && client.port == port)
+                {
+                    clients.Add(client);
+                }
+            }
+            return clients;
+        }
+
+        void KillServersAfterUnityCrash()
+        {
+            lock (crashKillLock) {
+                if (crashKill) return;
+                LLMUnitySetup.KillServerAfterUnityCrash(server);
+                crashKill = true;
+            }
+        }
+
         new public async void Awake()
         {
+            if (killExistingServersOnStart) KillServersAfterUnityCrash();
+            
             base.Awake();
         }
 
@@ -165,20 +192,6 @@ namespace LLMUnity
                     Debug.Log($"Unknown architecture of processor {arch}! Falling back to x86_64");
             }
             return apeExe;
-        }
-
-        public bool IsPortInUse()
-        {
-            try
-            {
-                using (TcpClient c = new TcpClient())
-                {
-                    c.Connect(host, port);
-                }
-                return true;
-            }
-            catch { }
-            return false;
         }
 
         private void DebugLog(string message, bool logError = false)
@@ -260,7 +273,8 @@ namespace LLMUnity
 
         public async Task StartLLMServer()
         {
-            if (IsPortInUse()) throw new Exception($"Port {port} is already in use, please use another port or kill all llamafile processes using it!");
+            bool portInUse = asynchronousStartup ? await IsServerReachableAsync() : IsServerReachable();
+            if (portInUse) throw new Exception($"Port {port} is already in use, please use another port or kill all llamafile processes using it!");
 
             // Start the LLM server in a cross-platform way
             if (model == "") throw new Exception("No model file provided!");
@@ -307,15 +321,21 @@ namespace LLMUnity
             }
 
             if (process.HasExited) throw new Exception("Server could not be started!");
+            else LLMUnitySetup.SaveServerPID(process.Id);
         }
 
         public void StopProcess()
         {
             // kill the llm server
-            if (process != null && !process.HasExited)
+            if (process != null)
             {
-                process.Kill();
-                process.WaitForExit();
+                int pid = process.Id;
+                if (!process.HasExited)
+                {
+                    process.Kill();
+                    process.WaitForExit();
+                }
+                LLMUnitySetup.DeleteServerPID(pid);
             }
         }
 

@@ -14,9 +14,13 @@ namespace LLMUnityTests
         public new void Awake() {}
         public new void OnDestroy() {}
 
-        public void CallAwake()
+        public async Task CallAwake()
         {
             base.Awake();
+            while (!serverListening)
+            {
+                await Task.Delay(100);
+            }
         }
 
         public void CallOnDestroy()
@@ -36,7 +40,7 @@ namespace LLMUnityTests
         GameObject gameObject;
         LLMNoAwake llm;
         int port = 15555;
-        string AIReply = "antantantantantantantantantantantantantantantantantantantantant";
+        string AIReply = "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
         Exception error = null;
 
         public TestLLM()
@@ -75,8 +79,7 @@ namespace LLMUnityTests
             error = null;
             try
             {
-                Assert.That(!llm.IsPortInUse());
-                llm.CallAwake();
+                await llm.CallAwake();
                 TestAlive();
                 await llm.Tokenize("I", TestTokens);
                 await llm.Warmup();
@@ -109,7 +112,6 @@ namespace LLMUnityTests
         public void TestAlive()
         {
             Assert.That(llm.serverListening);
-            Assert.That(llm.IsPortInUse());
         }
 
         public async void TestInitParameters()

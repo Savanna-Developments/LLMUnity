@@ -1,5 +1,4 @@
 ### 🐛 Fixes
 
-- Kill server after Unity crash (PR: #101)
-- Persist chat template on remote servers (PR: #103)
+- Fix async server 2 (PR: #108)
 

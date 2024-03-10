@@ -1,3 +1,16 @@
+## v1.2.3
+#### 🐛 Fixes
+
+- Fix async server 2 (PR: #108)
+
+
+## v1.2.2
+#### 🐛 Fixes
+
+- use namespaces in all classes (PR: #104)
+- await separately in StartServer (PR: #107)
+
+
 ## v1.2.1
 #### 🐛 Fixes
 

@@ -171,7 +171,8 @@ namespace LLMUnity
         new public async void Awake()
         {
             if (killExistingServersOnStart) KillServersAfterUnityCrash();
-            
+            if (asynchronousStartup) await StartLLMServer();
+            else _ = StartLLMServer();
             base.Awake();
         }
 
@@ -296,8 +297,8 @@ namespace LLMUnity
 
             string GPUArgument = numGPULayers <= 0 ? "" : $" -ngl {numGPULayers}";
             LLMUnitySetup.makeExecutable(server);
-            RunServerCommand(server, arguments + GPUArgument);
 
+            RunServerCommand(server, arguments + GPUArgument);
             if (asynchronousStartup) await WaitOneASync(serverBlock, TimeSpan.FromSeconds(60));
             else serverBlock.WaitOne(60000);
 

@@ -6,6 +6,7 @@ using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEditor;
+using UnityEditor.PackageManager.UI;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -29,7 +30,8 @@ namespace LLMUnity
         [ModelAdvanced] public int contextSize = 512;
         [ModelAdvanced] public int batchSize = 512;
 
-        [HideInInspector] public readonly (string, string)[] modelOptions = new(string, string)[]
+        [HideInInspector]
+        public readonly (string, string)[] modelOptions = new (string, string)[]
         {
             ("Download model", null),
             ("Mistral 7B Instruct v0.2 (medium, best overall)", "https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_K_M.gguf?download=true"),
@@ -54,6 +56,9 @@ namespace LLMUnity
         private ManualResetEvent serverBlock = new ManualResetEvent(false);
         static object crashKillLock = new object();
         static bool crashKill = false;
+
+        string lastServerCommand = "";
+        string lastHardwareSignatire = "";
 
 #if UNITY_EDITOR
         [InitializeOnLoadMethod]
@@ -166,7 +171,8 @@ namespace LLMUnity
 
         void KillServersAfterUnityCrash()
         {
-            lock (crashKillLock) {
+            lock (crashKillLock)
+            {
                 if (crashKill) return;
                 LLMUnitySetup.KillServerAfterUnityCrash(server);
                 crashKill = true;
@@ -233,7 +239,7 @@ namespace LLMUnity
                     serverBlock.Set();
                 }
             }
-            catch {}
+            catch { }
         }
 
         private void ProcessExited(object sender, EventArgs e)
@@ -303,6 +309,13 @@ namespace LLMUnity
             string GPUArgument = numGPULayers <= 0 ? "" : $" -ngl {numGPULayers}";
             LLMUnitySetup.makeExecutable(server);
 
+            if (LLMSerializedSettings.HasServerCommand())
+            {
+                RunServerCommand(server, LLMSerializedSettings.ServerCommand);
+                if (asynchronousStartup) await WaitOneASync(serverBlock, TimeSpan.FromSeconds(60));
+                else serverBlock.WaitOne(60000);
+            }
+
             RunServerCommand(server, arguments + GPUArgument);
             if (asynchronousStartup) await WaitOneASync(serverBlock, TimeSpan.FromSeconds(60));
             else serverBlock.WaitOne(60000);
@@ -328,8 +341,15 @@ namespace LLMUnity
                 else serverBlock.WaitOne(60000);
             }
 
-            if (process.HasExited) throw new Exception("Server could not be started!");
-            else LLMUnitySetup.SaveServerPID(process.Id);
+            if (process.HasExited)
+            {
+                throw new Exception("Server could not be started!");
+            }
+            else
+            {
+                LLMSerializedSettings.ServerCommand = arguments + GPUArgument;
+                LLMUnitySetup.SaveServerPID(process.Id);
+            }
         }
 
         public void StopProcess()

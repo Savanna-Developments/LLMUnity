@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Net;
 using System;
+using Unity.Collections;
 
 namespace LLMUnity
 {
@@ -78,6 +79,15 @@ namespace LLMUnity
             // Path to store llm server binaries and models
             return Path.Combine(Application.streamingAssetsPath, relPath).Replace('\\', '/');
         }
+
+        public static string GetHardwareHash()
+        {
+            // Generate a hash based on the GPU, RAM & CPU in the user's machine
+            object[] data = new object[] { SystemInfo.graphicsDeviceName, SystemInfo.systemMemorySize, SystemInfo.processorType, SystemInfo.graphicsDeviceName };
+            string hardwareHash = Hash128.Compute(string.Join("", data)).ToString();
+            return hardwareHash;
+        }
+
 
 #if UNITY_EDITOR
         public class DownloadStatus
@@ -154,7 +164,7 @@ namespace LLMUnity
                 AssetDatabase.StartAssetEditing();
                 await Task.Run(() =>
                 {
-                    foreach (string filename in new string[] {fullPath, fullPath + ".meta"})
+                    foreach (string filename in new string[] { fullPath, fullPath + ".meta" })
                     {
                         if (File.Exists(fullPath))
                             File.Delete(fullPath);
@@ -252,7 +262,7 @@ namespace LLMUnity
                         process.WaitForExit();
                     }
                 }
-                catch (Exception) {}
+                catch (Exception) { }
             }
 
             string pidfile = GetPIDFile();

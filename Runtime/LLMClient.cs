@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -88,7 +89,6 @@ namespace LLMUnity
         private List<(string, string)> requestHeaders = new List<(string, string)> { ("Content-Type", "application/json") };
         private string previousEndpoint;
         public bool setNKeepToPrompt = true;
-        private List<string> stopAll;
         private List<UnityWebRequest> WIPRequests = new List<UnityWebRequest>();
         static object chatPromptLock = new object();
         static object chatAddLock = new object();
@@ -117,7 +117,7 @@ namespace LLMUnity
         public virtual void SetTemplate(string templateName)
         {
             chatTemplate = templateName;
-            template = ChatTemplate.GetTemplate(templateName, playerName, AIName);
+            LoadTemplate();
         }
 
         private void Reset()
@@ -197,10 +197,7 @@ namespace LLMUnity
 
         private void LoadTemplate()
         {
-            template = ChatTemplate.GetTemplate(chatTemplate, playerName, AIName);
-            stopAll = new List<string>();
-            stopAll.AddRange(template.GetStop());
-            if (stop != null) stopAll.AddRange(stop);
+            template = ChatTemplate.GetTemplate(chatTemplate);
         }
 
 #if UNITY_EDITOR
@@ -210,11 +207,18 @@ namespace LLMUnity
         }
 
 #endif
-        public ChatRequest GenerateRequest()
+        List<string> GetStopwords()
+        {
+            List<string> stopAll = new List<string>(template.GetStop(playerName, AIName));
+            if (stop != null) stopAll.AddRange(stop);
+            return stopAll;
+        }
+
+        public ChatRequest GenerateRequest(string prompt)
         {
             // setup the request struct
             ChatRequest chatRequest = new ChatRequest();
-            chatRequest.prompt = template.ComputePrompt(chat);
+            chatRequest.prompt = prompt;
             chatRequest.temperature = temperature;
             chatRequest.top_k = topK;
             chatRequest.top_p = topP;
@@ -222,7 +226,7 @@ namespace LLMUnity
             chatRequest.n_predict = numPredict;
             chatRequest.n_keep = nKeep;
             chatRequest.stream = stream;
-            chatRequest.stop = stopAll;
+            chatRequest.stop = GetStopwords();
             chatRequest.tfs_z = tfsZ;
             chatRequest.typical_p = typicalP;
             chatRequest.repeat_penalty = repeatPenalty;
@@ -262,7 +266,7 @@ namespace LLMUnity
         public string ChatContent(ChatResult result)
         {
             // get content from a chat result received from the endpoint
-            return result.content;
+            return result.content.Trim();
         }
 
         public string MultiChatContent(MultiChatResult result)
@@ -273,7 +277,7 @@ namespace LLMUnity
             {
                 response += resultPart.content;
             }
-            return response;
+            return response.Trim();
         }
 
         public string ChatOpenAIContent(ChatOpenAIResult result)
@@ -298,7 +302,8 @@ namespace LLMUnity
             string json;
             lock (chatPromptLock) {
                 AddPlayerMessage(question);
-                json = JsonUtility.ToJson(GenerateRequest());
+                string prompt = template.ComputePrompt(chat, AIName);
+                json = JsonUtility.ToJson(GenerateRequest(prompt));
                 chat.RemoveAt(chat.Count - 1);
             }
 
@@ -320,6 +325,26 @@ namespace LLMUnity
                 }
             }
 
+            completionCallback?.Invoke();
+            return result;
+        }
+
+        public async Task<string> Complete(string prompt, Callback<string> callback = null, EmptyCallback completionCallback = null)
+        {
+            // handle a completion request by the user
+            // call the callback function while the answer is received
+            // call the completionCallback function when the answer is fully received
+
+            string json = JsonUtility.ToJson(GenerateRequest(prompt));
+            string result;
+            if (stream)
+            {
+                result = await PostRequest<MultiChatResult, string>(json, "completion", MultiChatContent, callback);
+            }
+            else
+            {
+                result = await PostRequest<ChatResult, string>(json, "completion", ChatContent, callback);
+            }
             completionCallback?.Invoke();
             return result;
         }
@@ -407,7 +432,7 @@ namespace LLMUnity
         {
             // send a post request to the server and call the relevant callbacks to convert the received content and handle it
             // this function has streaming functionality i.e. handles the answer while it is being received
-            Ret result;
+            Ret result = default;
             byte[] jsonToSend = new System.Text.UTF8Encoding().GetBytes(json);
             using (var request = UnityWebRequest.Put($"{host}:{port}/{endpoint}", jsonToSend))
             {
@@ -438,8 +463,8 @@ namespace LLMUnity
                 }
                 WIPRequests.Remove(request);
 
-                if (request.result != UnityWebRequest.Result.Success) throw new System.Exception(request.error);
-                result = ConvertContent(request.downloadHandler.text, getContent);
+                if (request.result != UnityWebRequest.Result.Success) Debug.LogError(request.error);
+                else result = ConvertContent(request.downloadHandler.text, getContent);
                 callback?.Invoke(result);
             }
             return result;

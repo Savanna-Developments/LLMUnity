@@ -37,8 +37,8 @@ namespace LLMUnity
             ("Phi 2 (small, decent)", "https://huggingface.co/TheBloke/phi-2-GGUF/resolve/main/phi-2.Q4_K_M.gguf?download=true"),
         };
         public int SelectedModel = 0;
-        private static readonly string serverZipUrl = "https://github.com/Mozilla-Ocho/llamafile/releases/download/0.6/llamafile-0.6.zip";
-        private static readonly string server = LLMUnitySetup.GetAssetPath("llamafile");
+        private static readonly string serverZipUrl = "https://github.com/Mozilla-Ocho/llamafile/releases/download/0.6.2/llamafile-0.6.2.zip";
+        private static readonly string server = LLMUnitySetup.GetAssetPath("llamafile-0.6.2.exe");
         private static readonly string apeARMUrl = "https://cosmo.zip/pub/cosmos/bin/ape-arm64.elf";
         private static readonly string apeARM = LLMUnitySetup.GetAssetPath("ape-arm64.elf");
         private static readonly string apeX86_64Url = "https://cosmo.zip/pub/cosmos/bin/ape-x86_64.elf";
@@ -221,7 +221,7 @@ namespace LLMUnity
             try
             {
                 ServerStatus status = JsonUtility.FromJson<ServerStatus>(message);
-                if (status.message == "HTTP server listening")
+                if (status.message == "model loaded")
                 {
                     Debug.Log("LLM Server started!");
                     serverListening = true;
@@ -249,15 +249,8 @@ namespace LLMUnity
         {
             string binary = exe;
             string arguments = args;
-
-            List<(string, string)> environment = null;
             if (Application.platform == RuntimePlatform.LinuxEditor || Application.platform == RuntimePlatform.LinuxPlayer)
             {
-                if (numGPULayers <= 0)
-                {
-                    // prevent nvcc building if not using GPU
-                    environment = new List<(string, string)> { ("PATH", ""), ("CUDA_PATH", "") };
-                }
                 // use APE binary directly if on Linux
                 arguments = $"{EscapeSpaces(binary)} {arguments}";
                 binary = SelectApeBinary();
@@ -269,24 +262,40 @@ namespace LLMUnity
                 binary = "sh";
             }
             Debug.Log($"Server command: {binary} {arguments}");
-            process = LLMUnitySetup.CreateProcess(binary, arguments, CheckIfListening, ProcessError, ProcessExited, environment);
+            process = LLMUnitySetup.CreateProcess(binary, arguments, CheckIfListening, ProcessError, ProcessExited);
         }
 
         public async Task StartLLMServer()
         {
             bool portInUse = asynchronousStartup ? await IsServerReachableAsync() : IsServerReachable();
-            if (portInUse) throw new Exception($"Port {port} is already in use, please use another port or kill all llamafile processes using it!");
+            if (portInUse)
+            {
+                Debug.LogError($"Port {port} is already in use, please use another port or kill all llamafile processes using it!");
+                return;
+            }
 
             // Start the LLM server in a cross-platform way
-            if (model == "") throw new Exception("No model file provided!");
+            if (model == "")
+            {
+                Debug.LogError("No model file provided!");
+                return;
+            }
             string modelPath = LLMUnitySetup.GetAssetPath(model);
-            if (!File.Exists(modelPath)) throw new Exception($"File {modelPath} not found!");
+            if (!File.Exists(modelPath))
+            {
+                Debug.LogError($"File {modelPath} not found!");
+                return;
+            }
 
             string loraPath = "";
             if (lora != "")
             {
                 loraPath = LLMUnitySetup.GetAssetPath(lora);
-                if (!File.Exists(loraPath)) throw new Exception($"File {loraPath} not found!");
+                if (!File.Exists(loraPath))
+                {
+                    Debug.LogError($"File {loraPath} not found!");
+                    return;
+                }
             }
 
             int slots = parallelPrompts == -1 ? 1 : parallelPrompts;
@@ -295,7 +304,8 @@ namespace LLMUnity
             if (numThreads > 0) arguments += $" -t {numThreads}";
             if (loraPath != "") arguments += $" --lora {EscapeSpaces(loraPath)}";
 
-            string GPUArgument = numGPULayers <= 0 ? "" : $" -ngl {numGPULayers}";
+            string noGPUArgument = " -ngl 0 --gpu no";
+            string GPUArgument = numGPULayers <= 0 ? noGPUArgument : $" -ngl {numGPULayers}";
             LLMUnitySetup.makeExecutable(server);
 
             RunServerCommand(server, arguments + GPUArgument);
@@ -316,12 +326,13 @@ namespace LLMUnity
             {
                 Debug.Log("GPU failed, fallback to CPU");
                 serverBlock.Reset();
-                RunServerCommand(server, arguments);
+
+                RunServerCommand(server, arguments + noGPUArgument);
                 if (asynchronousStartup) await WaitOneASync(serverBlock, TimeSpan.FromSeconds(60));
                 else serverBlock.WaitOne(60000);
             }
 
-            if (process.HasExited) throw new Exception("Server could not be started!");
+            if (process.HasExited) Debug.LogError("Server could not be started!");
             else LLMUnitySetup.SaveServerPID(process.Id);
         }
 

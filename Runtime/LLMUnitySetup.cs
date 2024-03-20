@@ -17,6 +17,9 @@ namespace LLMUnity
 
     public class LLMUnitySetup : MonoBehaviour
     {
+        // DON'T CHANGE! the version is autocompleted with a GitHub action
+        public static string Version = "v1.2.4";
+
         public static Process CreateProcess(
             string command, string commandArgs = "",
             Callback<string> outputCallback = null, Callback<string> errorCallback = null, System.EventHandler exitCallback = null,

@@ -1,3 +1,10 @@
+## v1.2.5
+#### 🐛 Fixes
+
+- Add to chat history only if the response is not null (PR: #123)
+- Allow SetTemplate function in Runtime (PR: #129)
+
+
 ## v1.2.4
 #### 🚀 Features
 

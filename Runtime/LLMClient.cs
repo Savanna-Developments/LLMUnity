@@ -30,16 +30,16 @@ namespace LLMUnity
         }
     }
 
-    public class ClientAttribute : PropertyAttribute {}
-    public class ServerAttribute : PropertyAttribute {}
-    public class ModelAttribute : PropertyAttribute {}
-    public class ModelAddonAttribute : PropertyAttribute {}
-    public class ChatAttribute : PropertyAttribute {}
-    public class ClientAdvancedAttribute : PropertyAttribute {}
-    public class ServerAdvancedAttribute : PropertyAttribute {}
-    public class ModelAdvancedAttribute : PropertyAttribute {}
-    public class ModelAddonAdvancedAttribute : PropertyAttribute {}
-    public class ModelExpertAttribute : PropertyAttribute {}
+    public class ClientAttribute : PropertyAttribute { }
+    public class ServerAttribute : PropertyAttribute { }
+    public class ModelAttribute : PropertyAttribute { }
+    public class ModelAddonAttribute : PropertyAttribute { }
+    public class ChatAttribute : PropertyAttribute { }
+    public class ClientAdvancedAttribute : PropertyAttribute { }
+    public class ServerAdvancedAttribute : PropertyAttribute { }
+    public class ModelAdvancedAttribute : PropertyAttribute { }
+    public class ModelAddonAdvancedAttribute : PropertyAttribute { }
+    public class ModelExpertAttribute : PropertyAttribute { }
 
     [DefaultExecutionOrder(-1)]
     public class LLMClient : MonoBehaviour
@@ -111,6 +111,11 @@ namespace LLMUnity
                 }
             }
             return null;
+        }
+
+        public virtual void SetTemplate(ChatTemplate newTemplate)
+        {
+            template = newTemplate;
         }
 
         public virtual void SetTemplate(string templateName)
@@ -197,7 +202,7 @@ namespace LLMUnity
 
         private void LoadTemplate()
         {
-            template = ChatTemplate.GetTemplate(chatTemplate);
+            template = new MistralChatTemplate();
         }
 
 #if UNITY_EDITOR
@@ -300,7 +305,8 @@ namespace LLMUnity
             await InitNKeep();
 
             string json;
-            lock (chatPromptLock) {
+            lock (chatPromptLock)
+            {
                 AddPlayerMessage(question);
                 string prompt = template.ComputePrompt(chat, AIName);
                 json = JsonUtility.ToJson(GenerateRequest(prompt));
@@ -319,7 +325,8 @@ namespace LLMUnity
 
             if (addToHistory && result != null)
             {
-                lock (chatAddLock) {
+                lock (chatAddLock)
+                {
                     AddPlayerMessage(question);
                     AddAIMessage(result);
                 }
@@ -401,7 +408,7 @@ namespace LLMUnity
             {
                 webRequest.timeout = timeout;
                 webRequest.SendWebRequest();
-                while (!webRequest.isDone) {}
+                while (!webRequest.isDone) { }
                 if (webRequest.result == UnityWebRequest.Result.ConnectionError)
                 {
                     return false;

@@ -18,40 +18,40 @@ namespace LLMUnity
         {
             DefaultTemplate = "chatml";
 
-            templateClasses = new Type[]
-            {
-                typeof(ChatMLTemplate),
-                typeof(AlpacaTemplate),
-                typeof(MistralChatTemplate),
-                typeof(MistralInstructTemplate),
-                typeof(LLama2ChatTemplate),
-                typeof(LLama2Template),
-                typeof(Phi2Template),
-                typeof(ZephyrTemplate),
-            };
+            //templateClasses = new Type[]
+            //{
+            //    typeof(ChatMLTemplate),
+            //    typeof(AlpacaTemplate),
+            //    typeof(MistralChatTemplate),
+            //    typeof(MistralInstructTemplate),
+            //    typeof(LLama2ChatTemplate),
+            //    typeof(LLama2Template),
+            //    typeof(Phi2Template),
+            //    typeof(ZephyrTemplate),
+            //};
 
-            templates = new Dictionary<string, Type>();
-            templatesDescription = new Dictionary<string, string>();
-            modelTemplates = new Dictionary<string, string>();
-            chatTemplates = new Dictionary<string, string>();
-            foreach (Type templateClass in templateClasses)
-            {
-                ChatTemplate template = (ChatTemplate)Activator.CreateInstance(templateClass);
-                if (templates.ContainsKey(template.GetName())) Debug.LogError($"{template.GetName()} already in templates");
-                templates[template.GetName()] = templateClass;
-                if (templatesDescription.ContainsKey(template.GetDescription())) Debug.LogError($"{template.GetDescription()} already in templatesDescription");
-                templatesDescription[template.GetDescription()] = template.GetName();
-                foreach (string match in template.GetNameMatches())
-                {
-                    if (modelTemplates.ContainsKey(match)) Debug.LogError($"{match} already in modelTemplates");
-                    modelTemplates[match] = template.GetName();
-                }
-                foreach (string match in template.GetChatTemplateMatches())
-                {
-                    if (chatTemplates.ContainsKey(match)) Debug.LogError($"{match} already in chatTemplates");
-                    chatTemplates[match] = template.GetName();
-                }
-            }
+            //templates = new Dictionary<string, Type>();
+            //templatesDescription = new Dictionary<string, string>();
+            //modelTemplates = new Dictionary<string, string>();
+            //chatTemplates = new Dictionary<string, string>();
+            //foreach (Type templateClass in templateClasses)
+            //{
+            //    ChatTemplate template = (ChatTemplate)Activator.CreateInstance(templateClass);
+            //    if (templates.ContainsKey(template.GetName())) Debug.LogError($"{template.GetName()} already in templates");
+            //    templates[template.GetName()] = templateClass;
+            //    if (templatesDescription.ContainsKey(template.GetDescription())) Debug.LogError($"{template.GetDescription()} already in templatesDescription");
+            //    templatesDescription[template.GetDescription()] = template.GetName();
+            //    foreach (string match in template.GetNameMatches())
+            //    {
+            //        if (modelTemplates.ContainsKey(match)) Debug.LogError($"{match} already in modelTemplates");
+            //        modelTemplates[match] = template.GetName();
+            //    }
+            //    foreach (string match in template.GetChatTemplateMatches())
+            //    {
+            //        if (chatTemplates.ContainsKey(match)) Debug.LogError($"{match} already in chatTemplates");
+            //        chatTemplates[match] = template.GetName();
+            //    }
+            //}
         }
 
         public static string FromName(string name)
@@ -106,8 +106,8 @@ namespace LLMUnity
 
         public abstract string GetName();
         public abstract string GetDescription();
-        public virtual string[] GetNameMatches() { return new string[] {}; }
-        public virtual string[] GetChatTemplateMatches() { return new string[] {}; }
+        public virtual string[] GetNameMatches() { return new string[] { }; }
+        public virtual string[] GetChatTemplateMatches() { return new string[] { }; }
         public abstract string[] GetStop(string playerName, string AIName);
 
         protected virtual string PromptPrefix() { return ""; }
@@ -160,8 +160,8 @@ namespace LLMUnity
     {
         public override string GetName() { return "chatml"; }
         public override string GetDescription() { return "chatml (best overall)"; }
-        public override string[] GetNameMatches() { return new string[] {"chatml", "hermes"}; }
-        public override string[] GetChatTemplateMatches() { return new string[] {"{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"}; }
+        public override string[] GetNameMatches() { return new string[] { "chatml", "hermes" }; }
+        public override string[] GetChatTemplateMatches() { return new string[] { "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}" }; }
 
         protected override string SystemPrefix() { return "<|im_start|>system\n"; }
         protected override string SystemSuffix() { return "<|im_end|>\n"; }
@@ -197,7 +197,7 @@ namespace LLMUnity
     {
         public override string GetName() { return "llama chat"; }
         public override string GetDescription() { return "llama (modified for chat)"; }
-        public override string[] GetNameMatches() { return new string[] {"llama"}; }
+        public override string[] GetNameMatches() { return new string[] { "llama" }; }
 
         protected override string PlayerPrefix(string playerName) { return "### " + playerName + ":"; }
         protected override string AIPrefix(string AIName) { return "### " + AIName + ":"; }
@@ -231,8 +231,8 @@ namespace LLMUnity
     {
         public override string GetName() { return "mistral chat"; }
         public override string GetDescription() { return "mistral (modified for chat)"; }
-        public override string[] GetNameMatches() { return new string[] {"mistral"}; }
-        public override string[] GetChatTemplateMatches() { return new string[] {"{{ bos_token }}{% for message in messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}{% endif %}{% if message['role'] == 'user' %}{{ '[INST] ' + message['content'] + ' [/INST]' }}{% elif message['role'] == 'assistant' %}{{ message['content'] + eos_token}}{% else %}{{ raise_exception('Only user and assistant roles are supported!') }}{% endif %}{% endfor %}"}; }
+        public override string[] GetNameMatches() { return new string[] { "mistral" }; }
+        public override string[] GetChatTemplateMatches() { return new string[] { "{{ bos_token }}{% for message in messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}{% endif %}{% if message['role'] == 'user' %}{{ '[INST] ' + message['content'] + ' [/INST]' }}{% elif message['role'] == 'assistant' %}{{ message['content'] + eos_token}}{% else %}{{ raise_exception('Only user and assistant roles are supported!') }}{% endif %}{% endfor %}" }; }
 
         protected override string PlayerPrefix(string playerName) { return "### " + playerName + ":"; }
         protected override string AIPrefix(string AIName) { return "### " + AIName + ":"; }
@@ -248,7 +248,7 @@ namespace LLMUnity
     {
         public override string GetName() { return "alpaca"; }
         public override string GetDescription() { return "alpaca (best alternative)"; }
-        public override string[] GetNameMatches() { return new string[] {"alpaca"}; }
+        public override string[] GetNameMatches() { return new string[] { "alpaca" }; }
 
         protected override string SystemSuffix() { return "\n\n"; }
         protected override string RequestSuffix() { return "\n"; }
@@ -267,7 +267,7 @@ namespace LLMUnity
     {
         public override string GetName() { return "phi"; }
         public override string GetDescription() { return "phi"; }
-        public override string[] GetNameMatches() { return new string[] {"phi"}; }
+        public override string[] GetNameMatches() { return new string[] { "phi" }; }
 
         protected override string SystemSuffix() { return "\n\n"; }
         protected override string RequestSuffix() { return "\n"; }
@@ -286,8 +286,8 @@ namespace LLMUnity
     {
         public override string GetName() { return "zephyr"; }
         public override string GetDescription() { return "zephyr"; }
-        public override string[] GetNameMatches() { return new string[] {"zephyr"}; }
-        public override string[] GetChatTemplateMatches() { return new string[] {"{% for message in messages %}\n{% if message['role'] == 'user' %}\n{{ '<|user|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'system' %}\n{{ '<|system|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'assistant' %}\n{{ '<|assistant|>\n'  + message['content'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"}; }
+        public override string[] GetNameMatches() { return new string[] { "zephyr" }; }
+        public override string[] GetChatTemplateMatches() { return new string[] { "{% for message in messages %}\n{% if message['role'] == 'user' %}\n{{ '<|user|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'system' %}\n{{ '<|system|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'assistant' %}\n{{ '<|assistant|>\n'  + message['content'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}" }; }
 
         protected override string SystemPrefix() { return "<|system|>\n"; }
         protected override string SystemSuffix() { return "</s>\n"; }
